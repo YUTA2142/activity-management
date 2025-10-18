@@ -16,9 +16,7 @@
   body{margin:0; background:linear-gradient(180deg,var(--bg),#0e0f10 30%, var(--bg) 100%);
     color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", Helvetica, Arial, "Noto Sans JP", "Apple Color Emoji","Segoe UI Emoji"; 
     display:flex; flex-direction:column; min-height:100dvh;}
-  header, footer{position:sticky; z-index:5}
-  header{top:0; background:rgba(17,19,21,.75); backdrop-filter:saturate(120%) blur(8px); border-bottom:1px solid var(--muted); box-shadow:var(--shadow)}
-  footer{bottom:0; background:rgba(17,19,21,.85); backdrop-filter: blur(8px); border-top:1px solid var(--muted)}
+  header{position:sticky; z-index:5; top:0; background:rgba(17,19,21,.75); backdrop-filter:saturate(120%) blur(8px); border-bottom:1px solid var(--muted); box-shadow:var(--shadow)}
   .wrap{max-width:980px; margin-inline:auto; padding:14px 16px}
   .brand{display:flex; align-items:center; gap:12px}
   .brand .logo{width:36px;height:36px; border-radius:10px; background:linear-gradient(135deg,var(--muted-2),var(--muted)); display:grid; place-items:center; box-shadow:inset 0 0 0 1px #000, 0 6px 18px rgba(0,0,0,.35)}
@@ -63,10 +61,10 @@
   .item .controls{display:flex; gap:8px; flex-wrap:wrap}
   .btn.icon{display:inline-flex; align-items:center; gap:6px}
   .empty{padding:24px; text-align:center; color:var(--text-2)}
-  .footbar{display:flex; gap:8px; justify-content:space-between; align-items:center}
   .seg{display:flex; gap:8px}
   .seg .btn{padding:8px 12px}
   .seg .btn[aria-pressed="true"]{outline:2px solid var(--brand)}
+  .list-filters{margin-bottom:12px; flex-wrap:wrap}
   .fade-in{animation:fade .25s ease-out}
   @keyframes fade {from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:translateY(0)} }
   .modal{position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); backdrop-filter: blur(4px)}
@@ -219,6 +217,11 @@
 <section aria-labelledby="listTitle" class="card fade-in">
 <div class="body">
 <h2 id="listTitle">行動リスト</h2>
+<div aria-label="表示切り替え" class="seg list-filters" id="listFilters" role="tablist">
+<button aria-pressed="true" class="btn" data-filter="all">すべて</button>
+<button aria-pressed="false" class="btn" data-filter="cond">条件</button>
+<button aria-pressed="false" class="btn" data-filter="sched">日程</button>
+</div>
 <div class="list" id="list"></div>
 <div class="empty" id="empty">まだ項目がありません。上のフォームから追加してください。</div>
 </div>
@@ -233,19 +236,6 @@
 </section>
 </div>
 </main>
-<footer>
-<div class="wrap footbar">
-<div aria-label="フィルター" class="seg" role="tablist">
-<button aria-pressed="true" class="btn" data-filter="all">すべて</button>
-<button aria-pressed="false" class="btn" data-filter="active">未達成</button>
-<button aria-pressed="false" class="btn" data-filter="upcoming">予定あり</button>
-<button aria-pressed="false" class="btn" data-filter="done">達成</button>
-</div>
-<div class="seg">
-<button class="btn err" id="clearBtn">全削除</button>
-</div>
-</div>
-</footer>
 <!-- Login Modal -->
 <div aria-labelledby="loginTitle" aria-modal="true" class="modal on" id="loginModal" role="dialog">
 <div class="panel">
@@ -312,7 +302,7 @@
   const modeEl = $('#mode');
   const condRow = $('#condRow');
   const schedRow = $('#schedRow');
-  const filterButtons = $$('.seg [data-filter]');
+  const filterButtons = $$('#listFilters [data-filter]');
   const loginModal = $('#loginModal');
   const loginForm = $('#loginForm');
   const currentUserEl = $('#currentUser');
@@ -519,9 +509,8 @@
       const getTs = (x)=> x.mode==='sched' && x.date ? new Date(x.date + (x.time? 'T'+x.time : 'T00:00')).getTime() : x.createdAt;
       return getTs(a) - getTs(b);
     }).filter(i=>{
-      if(filter==='active') return !i.done;
-      if(filter==='done') return i.done;
-      if(filter==='upcoming') return i.mode==='sched' && !!i.date && !i.done;
+      if(filter==='cond') return i.mode==='cond';
+      if(filter==='sched') return i.mode==='sched';
       return true;
     });
     visible.forEach(item=> listEl.appendChild(renderItem(item)) );
@@ -692,14 +681,6 @@
     save(); render(); form.reset(); toggleMode(); $('#diffOut').textContent = $('#difficulty').value;
   });
   $('#resetBtn').addEventListener('click', ()=>{ delete form.dataset.editing; toggleMode(); $('#diffOut').textContent = $('#difficulty').value; });
-
-  // 全削除（参照維持のため length=0 に）
-  $('#clearBtn').addEventListener('click', ()=>{
-    if(!items.length){ alert('削除する項目がありません'); return; }
-    if(confirm('すべての行動を削除しますか？この操作は元に戻せません。')){
-      items.length = 0; save(); render();
-    }
-  });
 
   // フィルター
   filterButtons.forEach(btn=> btn.addEventListener('click', ()=>{ filter = btn.dataset.filter; render(); }));
