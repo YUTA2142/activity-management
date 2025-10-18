@@ -28,6 +28,7 @@
   .settings-btn:hover{filter:brightness(1.08)}
   .settings-btn:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
   .settings-btn svg{width:20px; height:20px; stroke:var(--text-2); fill:none}
+  .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
   main{flex:1;}
   .grid{display:grid; gap:16px; grid-template-columns:1fr}
   @media(min-width:980px){ .grid{grid-template-columns: 1fr 1.2fr} }
@@ -106,6 +107,7 @@
 <svg fill="none" height="20" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><rect height="18" rx="4" stroke="#9aa3b1" width="18" x="3" y="3"></rect><path d="M7 14.5L10 11l3 3 4-6" stroke="#9aa3b1" stroke-width="1.5"></path></svg>
 </div>
 <h1>Activity-management</h1>
+<span aria-live="polite" class="sr-only" id="currentUser">未ログイン</span>
 <div class="header-actions">
 <div class="points" id="totalPoints"><small class="label">合計</small><span class="total">0</span> pt<small id="breakdown" style="display:none"></small></div>
 <button aria-label="設定" class="settings-btn" id="settingsBtn" type="button">
@@ -315,6 +317,7 @@
   const loginModal = $('#loginModal');
   const loginForm = $('#loginForm');
   const settingsBtn = $('#settingsBtn');
+  const currentUserEl = $('#currentUser');
   const acctModal = $('#acctModal');
   const acctForm = $('#acctForm');
   const acctClose = $('#acctClose');
@@ -347,6 +350,7 @@
   function updateAccountModalState(){
     const loggedIn = Boolean(store.currentUserId);
     if(accountNameEl) accountNameEl.textContent = loggedIn ? store.currentUserId : '未ログイン';
+    if(currentUserEl) currentUserEl.textContent = loggedIn ? store.currentUserId : '未ログイン';
     if(acctStatus) acctStatus.textContent = loggedIn ? 'パスワードの設定/変更ができます。' : 'ログインすると設定を変更できます。';
     if(logoutBtn) logoutBtn.disabled = !loggedIn;
     if(acctForm){
@@ -451,7 +455,7 @@
     }
   });
 
-  settingsBtn.addEventListener('click', ()=>{
+  function openSettings(){
     const curr = $('#currPw'); const npw = $('#newPw'); const npw2 = $('#newPw2');
     if(curr) curr.value=''; if(npw) npw.value=''; if(npw2) npw2.value='';
     if(acctForm){
@@ -459,8 +463,24 @@
     }
     updateAccountModalState();
     acctModal.classList.add('on');
-  });
-  acctClose.addEventListener('click', ()=> acctModal.classList.remove('on'));
+    if(settingsBtn) settingsBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeSettings(){
+    const wasOpen = acctModal.classList.contains('on');
+    acctModal.classList.remove('on');
+    if(settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
+    if(wasOpen && settingsBtn){
+      settingsBtn.focus();
+    }
+  }
+
+  if(settingsBtn){
+    settingsBtn.setAttribute('aria-haspopup', 'dialog');
+    settingsBtn.setAttribute('aria-expanded', 'false');
+    settingsBtn.addEventListener('click', openSettings);
+  }
+  acctClose.addEventListener('click', closeSettings);
   if (document.getElementById('showPw1')) { document.getElementById('showPw1').addEventListener('change', (e)=>{ document.getElementById('password').type = e.target.checked ? 'text':'password'; }); }
   if (document.getElementById('showPw2')) { document.getElementById('showPw2').addEventListener('change', (e)=>{ document.getElementById('currPw').type = e.target.checked ? 'text':'password'; }); }
   if (document.getElementById('showPw3')) { document.getElementById('showPw3').addEventListener('change', (e)=>{ document.getElementById('newPw').type = e.target.checked ? 'text':'password'; }); }
@@ -479,12 +499,25 @@
       if(!curr){ alert('現在のパスワードを入力してください'); return; }
       const h = await sha256Hex(curr); if(h !== meta.passwordHash){ alert('現在のパスワードが違います'); return; }
     }
-    meta.passwordHash = await sha256Hex(n1); store.users[uid] = meta; saveStore(); alert('パスワードを保存しました'); acctModal.classList.remove('on');
+    meta.passwordHash = await sha256Hex(n1); store.users[uid] = meta; saveStore(); alert('パスワードを保存しました'); closeSettings();
   });
 
   logoutBtn.addEventListener('click', ()=>{
     if(logoutBtn.disabled) return;
-    store.currentUserId = null; saveStore(); items = []; render(); acctModal.classList.remove('on'); loginModal.classList.add('on');
+    store.currentUserId = null; saveStore(); items = []; render(); closeSettings(); loginModal.classList.add('on');
+    updateAccountModalState();
+  });
+
+  acctModal.addEventListener('click', (e)=>{
+    if(e.target === acctModal){
+      closeSettings();
+    }
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && acctModal.classList.contains('on')){
+      closeSettings();
+    }
   });
 
   // Persistence helpers
@@ -761,6 +794,7 @@
     items = meta.items || [];
     items.forEach(normalizeItem);
     render(); loginModal.classList.remove('on');
+    updateAccountModalState();
   }
 
   updateAccountModalState();
