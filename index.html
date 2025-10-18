@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>行動管理（ブラウザだけ）</title>
+<style>
+  :root{
+    --bg:#111315; --panel:#1a1d20; --muted:#2a2e33; --muted-2:#3a3f45;
+    --text:#e6e8ea; --text-2:#b7bcc2; --brand:#8a92a3; --ok:#7fd1ae; --warn:#e7c888; --err:#d08989;
+    --shadow: 0 10px 24px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.4); --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; background:linear-gradient(180deg,var(--bg),#0e0f10 30%, var(--bg) 100%);
+    color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", Helvetica, Arial, "Noto Sans JP", "Apple Color Emoji","Segoe UI Emoji"; 
+    display:flex; flex-direction:column; min-height:100dvh;}
+  header, footer{position:sticky; z-index:5}
+  header{top:0; background:rgba(17,19,21,.75); backdrop-filter:saturate(120%) blur(8px); border-bottom:1px solid var(--muted); box-shadow:var(--shadow)}
+  footer{bottom:0; background:rgba(17,19,21,.85); backdrop-filter: blur(8px); border-top:1px solid var(--muted)}
+  .wrap{max-width:980px; margin-inline:auto; padding:14px 16px}
+  .brand{display:flex; align-items:center; gap:12px}
+  .brand .logo{width:36px;height:36px; border-radius:10px; background:linear-gradient(135deg,var(--muted-2),var(--muted)); display:grid; place-items:center; box-shadow:inset 0 0 0 1px #000, 0 6px 18px rgba(0,0,0,.35)}
+  h1{font-size:1.15rem; margin:0; letter-spacing:.02em}
+  .points{margin-left:auto; display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:999px; background:linear-gradient(180deg,var(--muted),var(--muted-2)); border:1px solid #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); font-weight:600}
+  .points small{color:var(--text-2); font-weight:500}
+  .userpill{margin-left:12px; display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background:linear-gradient(180deg,#2d3238,#24282d); border:1px solid #000}
+  .userpill .avatar{width:20px;height:20px; border-radius:6px; background:linear-gradient(180deg,#3b4149,#2a2f36)}
+  .userpill button{all:unset; cursor:pointer; color:var(--text-2)}
+  .userpill .sep{width:1px; height:18px; background:#000; opacity:.4; margin:0 6px}
+  main{flex:1;}
+  .grid{display:grid; gap:16px; grid-template-columns:1fr}
+  @media(min-width:980px){ .grid{grid-template-columns: 1fr 1.2fr} }
+  .card{background:linear-gradient(180deg,var(--panel),#15171a); border:1px solid #0a0b0c; border-radius:var(--radius); box-shadow:var(--shadow)}
+  .card h2{font-size:1rem; margin:0 0 10px}
+  .card .body{padding:16px}
+  .row{display:grid; gap:10px; grid-template-columns:1fr}
+  .row.cols-2{grid-template-columns:1fr 1fr}
+  .row.cols-3{grid-template-columns:1fr 1fr 1fr}
+  label{font-size:.9rem; color:var(--text-2)}
+  input, select, textarea{width:100%; padding:12px 12px; border-radius:12px; background:#0f1113; color:var(--text); border:1px solid var(--muted); outline:none; transition:.2s}
+  input:focus, select:focus, textarea:focus{border-color:var(--brand); background:#0d0f11}
+  .hint{font-size:.8rem; color:var(--text-2)}
+  .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+  .btn{padding:10px 14px; border-radius:12px; border:1px solid #000; background:linear-gradient(180deg,#2d3238,#24282d); color:var(--text); font-weight:600; cursor:pointer}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.primary{background:linear-gradient(180deg,#6c737d,#484e56);} 
+  .btn.ghost{background:transparent; border:1px dashed var(--muted-2); color:var(--text-2)}
+  .btn.ok{background:linear-gradient(180deg,#6a8f7f,#476457)}
+  .btn.warn{background:linear-gradient(180deg,#9a8860,#6f6147)}
+  .btn.err{background:linear-gradient(180deg,#8f6a6a,#5f4747)}
+  .list{display:grid; gap:12px}
+  .item{background:linear-gradient(180deg,#15171a,#121416); border:1px solid #0a0b0c; border-radius:14px; padding:12px}
+  .item-head{display:flex; align-items:center; gap:10px}
+  .badge{font-size:.8rem; padding:4px 8px; border-radius:999px; border:1px solid #000; background:linear-gradient(180deg,#2b3036,#23272c); color:var(--text-2)}
+  .date{font-size:.8rem; color:var(--text-2)}
+  .title{font-weight:700}
+  .muted{color:var(--text-2)}
+  .spacer{flex:1}
+  .item .bar{height:8px; border-radius:8px; background:#0e1012; border:1px solid #060708; overflow:hidden}
+  .item .bar > i{display:block; height:100%; background:linear-gradient(90deg,#6f7680,#9aa3b1)}
+  .item .controls{display:flex; gap:8px; flex-wrap:wrap}
+  .btn.icon{display:inline-flex; align-items:center; gap:6px}
+  .empty{padding:24px; text-align:center; color:var(--text-2)}
+  .footbar{display:flex; gap:8px; justify-content:space-between; align-items:center}
+  .seg{display:flex; gap:8px}
+  .seg .btn{padding:8px 12px}
+  .seg .btn[aria-pressed="true"]{outline:2px solid var(--brand)}
+  .fade-in{animation:fade .25s ease-out}
+  @keyframes fade {from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:translateY(0)} }
+  .modal{position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); backdrop-filter: blur(4px)}
+  .modal.on{display:grid}
+  .modal .panel{width:min(560px,92vw); background:linear-gradient(180deg,var(--panel),#14161a); border:1px solid #0a0b0c; border-radius:18px; box-shadow:var(--shadow); padding:18px}
+  .modal h3{margin:0 0 10px; font-size:1.05rem}
+  .muted2{color:var(--text-2); font-size:.9rem}
+  .inline{display:flex; align-items:center; gap:8px}
+
+  /* ===== Header controls (text labels) ===== */
+  #settingsBtn::before{content:none}
+  #settingsBtn, #logoutBtn{font-size:1rem}
+  .userpill .sep{display:inline-block}
+
+  /* ===== Mobile header layout (clean) ===== */
+  @media (max-width: 520px){
+    header{border-bottom:1px solid #0b0c0d}
+    header .wrap{padding:8px 12px}
+    .brand{display:flex; align-items:center; gap:10px; flex-wrap:nowrap}
+    .brand .logo{width:28px; height:28px; border-radius:8px}
+    h1{font-size:1rem; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    /* Order: logo, title, userpill, points (points pushes right) */
+    .userpill{margin-left:0; padding:6px 8px; gap:8px}
+    #currentUser{display:inline}
+    .points{margin-left:auto; padding:6px 10px; gap:8px; font-size:.95rem; line-height:1}
+    .points #breakdown{display:none}
+  }
+  @media (max-width: 380px){
+    h1{font-size:.95rem}
+    .points{font-size:.9rem}
+  }
+</style>
+<link href="/manifest.webmanifest" rel="manifest"/><meta content="#111315" name="theme-color"/><meta content="yes" name="apple-mobile-web-app-capable"/><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/><link href="/icons/icon-192.png" rel="apple-touch-icon"/></head>
+<body>
+<header>
+<div class="wrap brand">
+<div aria-hidden="true" class="logo">
+<svg fill="none" height="20" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><rect height="18" rx="4" stroke="#9aa3b1" width="18" x="3" y="3"></rect><path d="M7 14.5L10 11l3 3 4-6" stroke="#9aa3b1" stroke-width="1.5"></path></svg>
+</div>
+<h1>行動管理</h1>
+<div class="userpill" id="userPill">
+<div aria-hidden="true" class="avatar"></div>
+<span id="currentUser">未ログイン</span>
+<span aria-hidden="true" class="sep"></span>
+<button id="settingsBtn">設定</button>
+<span aria-hidden="true" class="sep"></span>
+<button id="logoutBtn">ログアウト</button>
+</div>
+<div class="points" id="totalPoints"><small class="label">合計</small><span class="total">0</span> pt<small id="breakdown" style="display:none"></small></div>
+</div>
+</header>
+<main>
+<div class="wrap grid" id="app">
+<!-- Add form -->
+<section aria-labelledby="formTitle" class="card fade-in">
+<div class="body">
+<h2 id="formTitle">新しい行動</h2>
+<form id="taskForm">
+<div class="row">
+<div>
+<label for="title">行動名</label>
+<input id="title" name="title" placeholder="例：朝7時に10分ストレッチ" required="" type="text"/>
+</div>
+</div>
+<div class="row cols-2">
+<div>
+<label for="mode">条件/日程</label>
+<select id="mode" name="mode">
+<option value="cond">条件で管理</option>
+<option value="sched">日程で管理</option>
+</select>
+<p class="hint">「条件」は自由記入。「日程」は日付と時間を指定。</p>
+</div>
+<div>
+<label for="difficulty">ないど（1〜10）</label>
+<input id="difficulty" max="10" min="1" name="difficulty" oninput="document.getElementById('diffOut').textContent=this.value" type="range" value="5"/>
+<div class="hint">現在：<strong id="diffOut">5</strong> pt</div>
+</div>
+</div>
+<div class="row" id="condRow">
+<div>
+<label for="condition">条件（自由記入）</label>
+<input id="condition" name="condition" placeholder="例：在宅勤務の日、夕食後など" type="text"/>
+</div>
+</div>
+<div class="row cols-2" id="schedRow" style="display:none">
+<div>
+<label for="date">日付</label>
+<input id="date" name="date" type="date"/>
+</div>
+<div>
+<label for="time">時間</label>
+<input id="time" name="time" type="time"/>
+</div>
+</div>
+<div class="actions">
+<button class="btn primary" type="submit">追加</button>
+<button class="btn ghost" id="resetBtn" type="reset">リセット</button>
+</div>
+</form>
+</div>
+</section>
+<!-- Spend points -->
+<section aria-labelledby="rewardsTitle" class="card fade-in">
+<div class="body">
+<h2 id="rewardsTitle">ご褒美カタログ</h2>
+<form id="rewardForm">
+<div class="row cols-2">
+<div>
+<label for="rewardName">ご褒美名</label>
+<input id="rewardName" name="rewardName" placeholder="例：カフェでご褒美ラテ" required="" type="text"/>
+</div>
+<div>
+<label for="rewardCost">必要pt</label>
+<input id="rewardCost" min="1" name="rewardCost" step="1" type="number" value="5"/>
+</div>
+</div>
+<div class="actions">
+<button class="btn" type="submit">ご褒美を追加</button>
+</div>
+</form>
+<div class="list" id="rewardsList"></div>
+<div class="empty" id="rewardsEmpty">登録されたご褒美がありません。上のフォームから追加してください。</div>
+</div>
+</section>
+<!-- Spend points (choose from rewards) -->
+<section aria-labelledby="spendTitle" class="card fade-in">
+<div class="body">
+<h2 id="spendTitle">ポイントを消費（ご褒美から選択）</h2>
+<form id="spendForm">
+<div class="row">
+<div>
+<label for="rewardSelect">ご褒美</label>
+<select id="rewardSelect" name="rewardSelect" required="">
+<option disabled="" selected="" value="">ご褒美を選択してください</option>
+</select>
+<p class="hint">カタログにない場合は、上の「ご褒美カタログ」から追加してください。</p>
+</div>
+</div>
+<div class="actions">
+<button class="btn warn" type="submit">ポイントを使う</button>
+<button class="btn ghost" id="undoLastSpend" type="button">直前の消費を取り消す</button>
+</div>
+</form>
+<div aria-live="polite" class="hint" id="spendWarn" style="margin:4px 0 0; color:#d08989; display:none">ポイントが足りません！</div>
+<div class="hint" id="spendLogWrap" style="margin-top:8px"></div>
+</div>
+</section>
+<!-- List -->
+<section aria-labelledby="listTitle" class="card fade-in">
+<div class="body">
+<h2 id="listTitle">行動リスト</h2>
+<div class="list" id="list"></div>
+<div class="empty" id="empty">まだ項目がありません。上のフォームから追加してください。</div>
+</div>
+</section>
+<!-- Spend history list (under the action list) -->
+<section aria-labelledby="spendListTitle" class="card fade-in">
+<div class="body">
+<h2 id="spendListTitle">消費リスト</h2>
+<div class="list" id="spendList"></div>
+<div class="empty" id="spendEmpty">消費履歴がありません。上の「ポイントを消費」から追加してください。</div>
+</div>
+</section>
+</div>
+</main>
+<footer>
+<div class="wrap footbar">
+<div aria-label="フィルター" class="seg" role="tablist">
+<button aria-pressed="true" class="btn" data-filter="all">すべて</button>
+<button aria-pressed="false" class="btn" data-filter="active">未達成</button>
+<button aria-pressed="false" class="btn" data-filter="upcoming">予定あり</button>
+<button aria-pressed="false" class="btn" data-filter="done">達成</button>
+</div>
+<div class="seg">
+<button class="btn err" id="clearBtn">全削除</button>
+</div>
+</div>
+</footer>
+<!-- Login Modal -->
+<div aria-labelledby="loginTitle" aria-modal="true" class="modal on" id="loginModal" role="dialog">
+<div class="panel">
+<h3 id="loginTitle">ログイン / 新規作成（ローカルのみ）</h3>
+<p class="muted2">このアプリは<strong>オフライン専用</strong>です。ユーザーとパスワードは<strong>このブラウザの中だけ</strong>に保存されます。</p>
+<form class="row" id="loginForm">
+<div>
+<label for="userId">ユーザー名（半角英数字・._- / 3文字以上）</label>
+<input id="userId" name="userId" placeholder="例：yuuta" required="" type="text"/>
+</div>
+<div>
+<label for="password">パスワード（必須）</label>
+<div class="inline">
+<input autocomplete="current-password" id="password" minlength="6" name="password" placeholder="6文字以上を推奨" required="" type="password"/>
+<label class="inline" style="font-size:.85rem"><input id="showPw1" type="checkbox"/> 表示</label>
+</div>
+<p class="hint">初回の新規作成時もパスワードが必要です。</p>
+</div>
+<div class="actions">
+<button class="btn primary" type="submit">入る</button>
+</div>
+</form>
+</div>
+</div>
+<!-- Account Settings Modal -->
+<div aria-labelledby="acctTitle" aria-modal="true" class="modal" id="acctModal" role="dialog">
+<div class="panel">
+<h3 id="acctTitle">アカウント設定（パスワードの設定/変更）</h3>
+<form class="row" id="acctForm">
+<div>
+<label for="currPw">現在のパスワード</label>
+<div class="inline">
+<input id="currPw" name="currPw" placeholder="未設定の方は空欄" type="password">
+<label class="inline" style="font-size:.85rem"><input id="showPw2" type="checkbox"/> 表示</label>
+</input></div>
+</div>
+<div>
+<label for="newPw">新しいパスワード</label>
+<div class="inline">
+<input id="newPw" name="newPw" placeholder="6文字以上推奨" type="password">
+<label class="inline" style="font-size:.85rem"><input id="showPw3" type="checkbox"/> 表示</label>
+</input></div>
+</div>
+<div>
+<label for="newPw2">新しいパスワード（確認）</label>
+<input id="newPw2" name="newPw2" placeholder="もう一度入力" type="password">
+</input></div>
+<div class="actions">
+<button class="btn primary" type="submit">保存</button>
+<button class="btn" id="acctClose" type="button">閉じる</button>
+</div>
+</form>
+</div>
+</div>
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  const form = $('#taskForm');
+  const listEl = $('#list');
+  const emptyEl = $('#empty');
+  const totalEl = $('#totalPoints .total');
+  const breakdownEl = $('#breakdown');
+  const modeEl = $('#mode');
+  const condRow = $('#condRow');
+  const schedRow = $('#schedRow');
+  const filterButtons = $$('.seg [data-filter]');
+  const loginModal = $('#loginModal');
+  const loginForm = $('#loginForm');
+  const currentUserEl = $('#currentUser');
+  const logoutBtn = $('#logoutBtn');
+  const settingsBtn = $('#settingsBtn');
+  const acctModal = $('#acctModal');
+  const acctForm = $('#acctForm');
+  const acctClose = $('#acctClose');
+  const spendForm = $('#spendForm');
+  const spendLogWrap = $('#spendLogWrap');
+  const spendWarn = $('#spendWarn');
+  const undoLastSpendBtn = $('#undoLastSpend');
+  const spendListEl = document.querySelector('#spendList');
+  const spendEmptyEl = document.querySelector('#spendEmpty');
+  const rewardForm = $('#rewardForm');
+  const rewardsListEl = $('#rewardsList');
+  const rewardsEmptyEl = $('#rewardsEmpty');
+  const rewardSelect = $('#rewardSelect');
+  let filter = 'all';
+
+  // 表示・保存の上限（必要に応じて調整可）
+  const SPEND_LIST_LIMIT = 200;   // 画面に表示する消費履歴の最大件数（新しい順）
+  const SPEND_LOG_MAX   = 500;   // 保存しておく最大件数（超えたら古い順に自動削除）
+
+  const STORE_KEY = 'behavior-tracker-v4';
+  const LEGACY_KEYS = ['behavior-tracker-v3','behavior-tracker-v2','behavior-tracker-v1'];
+  // store = { currentUserId: string|null, users: { [id]: { passwordHash: string|null, items: [], spent:number, spendLog:[{id,what,amt,at}], earned:number } } }
+  let store = { currentUserId:null, users:{} };
+  let items = [];
+
+  const USERNAME_PATTERN = /^[a-z0-9._-]{3,}$/;
+  const normalizeId = (id)=> String(id).trim().toLowerCase();
+  const findIdCaseInsensitive = (id)=>{
+    const norm = normalizeId(id);
+    return Object.keys(store.users).find(k => normalizeId(k) === norm) || null;
+  }
+
+  function saveStore(){ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+  function loadStore(){
+    try{ store = JSON.parse(localStorage.getItem(STORE_KEY)||'{}') }catch{ store={} }
+    if(!store || typeof store!== 'object') store = { currentUserId:null, users:{} };
+    if(!store.users) store.users = {};
+
+    // migrate older schemas
+    for(const k of LEGACY_KEYS){
+      const raw = localStorage.getItem(k); if(!raw) continue;
+      try{
+        const data = JSON.parse(raw);
+        if((k==='behavior-tracker-v3' || k==='behavior-tracker-v2') && data && data.users){
+          for(const [id, meta] of Object.entries(data.users)){
+            const key = findIdCaseInsensitive(id) || normalizeId(id);
+            if(!store.users[key]) store.users[key] = { passwordHash:null, items:[], spent:0, spendLog:[], earned:0 };
+            store.users[key].passwordHash = meta.passwordHash || meta.pinHash || null;
+            store.users[key].items = Array.isArray(meta.items)? meta.items : [];
+            if(typeof meta.spent === 'number') store.users[key].spent = meta.spent;
+            if(Array.isArray(meta.spendLog)) store.users[key].spendLog = meta.spendLog;
+          }
+          if(data.currentUserId) store.currentUserId = normalizeId(data.currentUserId);
+        } else if(k==='behavior-tracker-v1' && Array.isArray(data)){
+          const key='guest';
+          store.users[key] = store.users[key]||{ passwordHash:null, items:[], spent:0, spendLog:[], earned:0 };
+          store.users[key].items = data;
+          if(!store.currentUserId) store.currentUserId = key;
+        }
+        localStorage.removeItem(k);
+      }catch{}
+    }
+    saveStore();
+  }
+
+  async function sha256Hex(text){
+    const enc = new TextEncoder().encode(text);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  // Login / Create (case-insensitive id, password required)
+  loginForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const rawId = String($('#userId').value||'');
+    const pw = String($('#password').value||'');
+    if(!rawId){ alert('ユーザー名を入力してください'); return; }
+    const id = normalizeId(rawId);
+    if(!USERNAME_PATTERN.test(id)){ alert('ユーザー名は半角英数字・._-で3文字以上にしてください'); return; }
+    if(!pw){ alert('パスワードを入力してください'); return; }
+    if(pw.length < 6 && !confirm('6文字未満です。本当に続行しますか？')) return;
+
+    const hash = await sha256Hex(pw);
+    const existingId = findIdCaseInsensitive(id);
+
+    if(existingId){
+      const meta = store.users[existingId];
+      if(!meta.passwordHash){ meta.passwordHash = hash; saveStore(); alert('このユーザーにパスワードを設定しました'); }
+      if(hash !== meta.passwordHash){ alert('パスワードが違います'); return; }
+      setCurrentUser(existingId);
+    } else {
+      store.users[id] = { passwordHash: hash, items: [], spent:0, spendLog:[], earned:0 };
+      saveStore(); setCurrentUser(id);
+    }
+  });
+
+  settingsBtn.addEventListener('click', ()=>{
+    if(!store.currentUserId){ alert('まずログインしてください'); return; }
+    $('#currPw').value=''; $('#newPw').value=''; $('#newPw2').value='';
+    acctModal.classList.add('on');
+  });
+  acctClose.addEventListener('click', ()=> acctModal.classList.remove('on'));
+  if (document.getElementById('showPw1')) { document.getElementById('showPw1').addEventListener('change', (e)=>{ document.getElementById('password').type = e.target.checked ? 'text':'password'; }); }
+  if (document.getElementById('showPw2')) { document.getElementById('showPw2').addEventListener('change', (e)=>{ document.getElementById('currPw').type = e.target.checked ? 'text':'password'; }); }
+  if (document.getElementById('showPw3')) { document.getElementById('showPw3').addEventListener('change', (e)=>{ document.getElementById('newPw').type = e.target.checked ? 'text':'password'; }); }
+
+  acctForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const uid = store.currentUserId; if(!uid) return;
+    const meta = store.users[uid] || { passwordHash:null };
+    const curr = String($('#currPw').value||'');
+    const n1 = String($('#newPw').value||'');
+    const n2 = String($('#newPw2').value||'');
+    if(!n1){ alert('新しいパスワードを入力してください'); return; }
+    if(n1.length < 6 && !confirm('6文字未満です。本当に保存しますか？')) return;
+    if(n1 !== n2){ alert('確認用パスワードが一致しません'); return; }
+    if(meta.passwordHash){
+      if(!curr){ alert('現在のパスワードを入力してください'); return; }
+      const h = await sha256Hex(curr); if(h !== meta.passwordHash){ alert('現在のパスワードが違います'); return; }
+    }
+    meta.passwordHash = await sha256Hex(n1); store.users[uid] = meta; saveStore(); alert('パスワードを保存しました'); acctModal.classList.remove('on');
+  });
+
+  logoutBtn.addEventListener('click', ()=>{
+    store.currentUserId = null; saveStore(); currentUserEl.textContent = '未ログイン'; items = []; render(); loginModal.classList.add('on');
+  });
+
+  // Persistence helpers
+  function ensureUserMeta(){
+    const uid = store.currentUserId; if(!uid) return null;
+    store.users[uid] = store.users[uid] || { passwordHash:null, items:[], spent:0, spendLog:[], earned:0 };
+    if(typeof store.users[uid].spent !== 'number') store.users[uid].spent = 0;
+    if(!Array.isArray(store.users[uid].spendLog)) store.users[uid].spendLog = [];
+    if(typeof store.users[uid].earned !== 'number') store.users[uid].earned = 0;
+    if(!Array.isArray(store.users[uid].rewards)) store.users[uid].rewards = [];
+    return store.users[uid];
+  }
+  function save(){
+    const meta = ensureUserMeta(); if(!meta) return;
+    meta.items = items; saveStore();
+  }
+
+  // Points
+  function earnedPoints(){
+    const meta = ensureUserMeta();
+    const fromList = items.filter(i=>i.done).reduce((a,b)=> a + (Number(b.difficulty)||0), 0);
+    const acc = meta? (meta.earned||0) : 0;
+    return fromList + acc;
+  }
+  function spentPoints(){ const meta = ensureUserMeta(); return meta? (meta.spent||0) : 0; }
+  function balance(){ return Math.max(0, earnedPoints() - spentPoints()); }
+
+  function renderSpendLog(){
+    const meta = ensureUserMeta(); if(!meta) return;
+    const logs = meta.spendLog||[];
+    if(!logs.length){ spendLogWrap.innerHTML = '消費履歴：なし'; return; }
+    const last = logs[logs.length-1];
+    const fmt = (t)=>{ const d=new Date(t); const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'), hh=String(d.getHours()).padStart(2,'0'), mm=String(d.getMinutes()).padStart(2,'0'); return `${y}/${m}/${da} ${hh}:${mm}` };
+    spendLogWrap.innerHTML = `消費履歴（最新1件表示）：「${escapeHtml(last.what)}」に ${last.amt}pt - ${fmt(last.at)}`;
+  }
+
+  function render(){
+    listEl.innerHTML='';
+    const visible = items.slice().sort((a,b)=>{
+      const getTs = (x)=> x.mode==='sched' && x.date ? new Date(x.date + (x.time? 'T'+x.time : 'T00:00')).getTime() : x.createdAt;
+      return getTs(a) - getTs(b);
+    }).filter(i=>{
+      if(filter==='active') return !i.done;
+      if(filter==='done') return i.done;
+      if(filter==='upcoming') return i.mode==='sched' && !!i.date && !i.done;
+      return true;
+    });
+    visible.forEach(item=> listEl.appendChild(renderItem(item)) );
+    emptyEl.style.display = visible.length? 'none':'block';
+    // header points
+    totalEl.textContent = String(balance());
+    breakdownEl.textContent = `(取得 ${earnedPoints()} / 消費 ${spentPoints()})`;
+    filterButtons.forEach(b=> b.setAttribute('aria-pressed', String(b.dataset.filter===filter)) );
+    renderRewards();
+    renderSpendLog();
+    renderSpendList();
+  }
+
+  function renderItem(item){
+    const el = document.createElement('article');
+    el.className = 'item fade-in';
+    const dd = item.mode==='sched' && item.date ? formatDateTime(item.date, item.time) : null;
+    el.innerHTML = `
+      <div class="item-head">
+        <span class="badge">${item.mode==='sched' ? '日程' : '条件'}</span>
+        <div class="title">${escapeHtml(item.title)}</div>
+        <div class="spacer"></div>
+        <div class="badge" title="ないど">${item.difficulty} pt</div>
+      </div>
+      <div class="muted" style="margin:6px 0 10px">${ item.mode==='sched' ? (dd? `<span class="date">${dd}</span>`:'<span class="date">日程未設定</span>') : (item.condition? escapeHtml(item.condition) : '条件未設定') }</div>
+      <div class="bar" aria-hidden="true"><i style="width:${(item.difficulty/10)*100}%"></i></div>
+      <div class="actions controls" style="margin-top:10px">
+        ${ item.done ? `<button class="btn ok icon" data-act="undo" data-id="${item.id}">✅ 元に戻す</button>` : `<button class="btn ok icon" data-act="done" data-id="${item.id}">✔ 達成</button>`}
+        <button class="btn icon" data-act="edit" data-id="${item.id}">✎ 編集</button>
+        <button class="btn err icon" data-act="del" data-id="${item.id}">🗑 削除</button>
+      </div>`;
+    return el;
+  }
+
+  // ✅ クリック委譲で安定化（削除/達成/編集）
+  listEl.addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-act]'); if(!btn) return;
+    e.preventDefault();
+    const id = btn.dataset.id; const act = btn.dataset.act;
+    const idx = items.findIndex(x=>x.id===id); if(idx<0 && act!=='done' && act!=='edit') return;
+    const it = items[idx];
+    if(act==='done'){
+      if(!it) return;
+      if(it.done) { return; }
+      // 達成してもリストから削除しない（完了状態で残す）
+      it.done = true;
+      it.doneAt = Date.now();
+      save(); render();
+    }
+    if(act==='undo'){ if(!it) return; it.done = false; delete it.doneAt; save(); render(); }
+    if(act==='del'){
+      if(confirm('削除しますか？')){ items.splice(idx,1); save(); render(); }
+    }
+    if(act==='edit' && it){
+      $('#title').value = it.title; $('#mode').value = it.mode; toggleMode();
+      $('#condition').value = it.condition||''; $('#date').value = it.date||''; $('#time').value = it.time||'';
+      $('#difficulty').value = it.difficulty; $('#diffOut').textContent = it.difficulty;
+      form.dataset.editing = it.id; window.scrollTo({top:0, behavior:'smooth'});
+    }
+  });
+
+  function toggleMode(){ const m = modeEl.value; condRow.style.display = m==='cond'? 'grid':'none'; schedRow.style.display = m==='sched'? 'grid':'none'; }
+  function formatDateTime(d,t){ try{ const dt = new Date(d + (t? 'T'+t : 'T00:00')); const y=dt.getFullYear(), m=String(dt.getMonth()+1).padStart(2,'0'), da=String(dt.getDate()).padStart(2,'0'), hh=String(dt.getHours()).padStart(2,'0'), mm=String(dt.getMinutes()).padStart(2,'0'); return `${y}/${m}/${da}${t? ` ${hh}:${mm}`:''}` }catch{ return d } }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])) }
+
+  function fmtTs(ts){ try{ const d=new Date(ts); const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'), hh=String(d.getHours()).padStart(2,'0'), mm=String(d.getMinutes()).padStart(2,'0'); return `${y}/${m}/${da} ${hh}:${mm}` } catch { return String(ts) } }
+
+  function renderRewards(){
+    const meta = ensureUserMeta(); if(!meta) return;
+    const rewards = meta.rewards||[];
+    // populate select
+    if(rewardSelect){
+      const sel = rewardSelect; const cur = sel.value;
+      sel.innerHTML = '<option value="" disabled selected>ご褒美を選択してください</option>' + rewards.map(r=>`<option value="${r.id}">${escapeHtml(r.name)}（${r.cost}pt）</option>`).join('');
+      if(cur && rewards.some(r=>r.id===cur)) sel.value = cur;
+    }
+    // list render
+    if(!rewards.length){ rewardsListEl.innerHTML=''; rewardsEmptyEl.style.display='block'; return; }
+    rewardsEmptyEl.style.display='none';
+    rewardsListEl.innerHTML='';
+    rewards.forEach(r=>{
+      const el = document.createElement('article');
+      el.className='item fade-in';
+      el.innerHTML = `
+        <div class="item-head">
+          <span class="badge">ご褒美</span>
+          <div class="title">${escapeHtml(r.name)}</div>
+          <div class="spacer"></div>
+          <div class="badge">${r.cost} pt</div>
+        </div>
+        <div class="actions controls" style="margin-top:8px">
+          <button class="btn err icon" data-reward-del="${r.id}">🗑 削除</button>
+        </div>`;
+      rewardsListEl.appendChild(el);
+    });
+  }
+
+  function renderSpendList(){
+    const meta = ensureUserMeta(); if(!meta){ spendListEl.innerHTML=''; spendEmptyEl.style.display='block'; return; }
+    const logs = (meta.spendLog||[]).slice().sort((a,b)=> b.at - a.at).slice(0, SPEND_LIST_LIMIT);
+    spendListEl.innerHTML='';
+    if(!logs.length){ spendEmptyEl.style.display='block'; return; }
+    spendEmptyEl.style.display='none';
+    const note = document.createElement('div');
+    note.className='hint';
+    note.textContent = `最新${Math.min(SPEND_LIST_LIMIT, logs.length)}件を表示（古い履歴は自動で間引き）`;
+    spendListEl.appendChild(note);
+    logs.forEach(log=>{
+      const el = document.createElement('article');
+      el.className='item fade-in';
+      el.innerHTML = `
+        <div class="item-head">
+          <span class="badge">消費</span>
+          <div class="title">${escapeHtml(log.what)}</div>
+          <div class="spacer"></div>
+          <div class="badge" title="消費pt">-${log.amt} pt</div>
+        </div>
+        <div class="muted" style="margin:6px 0 6px"><span class="date">${fmtTs(log.at)}</span></div>
+        <div class="bar" aria-hidden="true"><i style="width:${Math.min(100, (log.amt/10)*100)}%"></i></div>
+      `;
+      spendListEl.appendChild(el);
+    });
+  }
+
+  // Form events
+  modeEl.addEventListener('change', toggleMode);
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault(); if(!store.currentUserId){ alert('ログインしてください'); return; }
+    const data = new FormData(form);
+    const title = String(data.get('title')||'').trim(); if(!title){ alert('行動名を入力してください'); return }
+    const mode = data.get('mode'); const difficulty = Number(data.get('difficulty')||5);
+    let condition = '', date='', time='';
+    if(mode==='cond'){ condition = String(data.get('condition')||'').trim(); }
+    else{ date = String(data.get('date')||''); time = String(data.get('time')||''); }
+    const editingId = form.dataset.editing;
+    if(editingId){ const i = items.findIndex(x=>x.id===editingId); if(i>=0){ items[i] = {...items[i], title, mode, condition, date, time, difficulty}; } delete form.dataset.editing; }
+    else{ items.push({id:uid(), title, mode, condition, date, time, difficulty, done:false, createdAt:Date.now()}); }
+    save(); render(); form.reset(); toggleMode(); $('#diffOut').textContent = $('#difficulty').value;
+  });
+  $('#resetBtn').addEventListener('click', ()=>{ delete form.dataset.editing; toggleMode(); $('#diffOut').textContent = $('#difficulty').value; });
+
+  // 全削除（参照維持のため length=0 に）
+  $('#clearBtn').addEventListener('click', ()=>{
+    if(!items.length){ alert('削除する項目がありません'); return; }
+    if(confirm('すべての行動を削除しますか？この操作は元に戻せません。')){
+      items.length = 0; save(); render();
+    }
+  });
+
+  // フィルター
+  filterButtons.forEach(btn=> btn.addEventListener('click', ()=>{ filter = btn.dataset.filter; render(); }));
+
+  // ポイント消費
+  spendForm.addEventListener('submit', (e)=>{
+    e.preventDefault(); const meta = ensureUserMeta(); if(!meta){ alert('ログインしてください'); return; }
+    const rewards = meta.rewards||[]; const rid = rewardSelect && rewardSelect.value;
+    const reward = rewards.find(r=> r.id===rid);
+    if(!reward){ alert('ご褒美を選択してください'); return; }
+    const what = reward.name; const amt = Math.max(1, Math.floor(Number(reward.cost||1)));
+    if(balance() < amt){
+      try{ if(spendWarn){ spendWarn.textContent = 'ポイントが足りません！'; spendWarn.style.display='block'; setTimeout(()=>{ if(spendWarn) spendWarn.style.display='none'; }, 2500); } }catch{}
+      alert('ポイントが足りません！');
+      return;
+    }
+    meta.spent = (meta.spent||0) + amt; meta.spendLog = meta.spendLog||[]; meta.spendLog.push({id:uid(), what, amt, at:Date.now(), rewardId: rid});
+    if(meta.spendLog.length > SPEND_LOG_MAX){ meta.spendLog.splice(0, meta.spendLog.length - SPEND_LOG_MAX); }
+    saveStore(); render(); if(rewardSelect) rewardSelect.value='';
+  });
+  undoLastSpendBtn.addEventListener('click', ()=>{
+    const meta = ensureUserMeta(); if(!meta) return;
+    const logs = meta.spendLog||[]; if(!logs.length){ alert('取り消す消費がありません'); return; }
+    const last = logs.pop(); meta.spent = Math.max(0, (meta.spent||0) - (last.amt||0)); saveStore(); render();
+  });
+
+  // Rewards: add/delete
+  rewardForm.addEventListener('submit', (e)=>{
+    e.preventDefault(); const meta = ensureUserMeta(); if(!meta){ alert('ログインしてください'); return; }
+    const name = String($('#rewardName').value||'').trim(); const cost = Math.max(1, Math.floor(Number($('#rewardCost').value||1)));
+    if(!name){ alert('ご褒美名を入力してください'); return; }
+    meta.rewards = meta.rewards||[]; meta.rewards.push({ id: uid(), name, cost });
+    saveStore(); $('#rewardForm').reset(); renderRewards();
+  });
+  rewardsListEl.addEventListener('click', (e)=>{
+    const delBtn = e.target.closest('[data-reward-del]'); if(!delBtn) return;
+    const id = delBtn.getAttribute('data-reward-del'); const meta = ensureUserMeta(); if(!meta) return;
+    const i = (meta.rewards||[]).findIndex(r=> r.id===id); if(i<0) return;
+    if(confirm('このご褒美を削除しますか？')){ meta.rewards.splice(i,1); saveStore(); renderRewards(); }
+  });
+
+  function today(offset=0){ const dt=new Date(); dt.setDate(dt.getDate()+offset); const y=dt.getFullYear(); const m=String(dt.getMonth()+1).padStart(2,'0'); const d=String(dt.getDate()).padStart(2,'0'); return `${y}-${m}-${d}` }
+  function uid(){return Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4)}
+
+  function setCurrentUser(id){
+    store.currentUserId = id; saveStore();
+    const meta = ensureUserMeta(); items = meta.items || []; render(); currentUserEl.textContent = id; loginModal.classList.remove('on');
+  }
+
+  loadStore();
+  if(store.currentUserId && store.users[store.currentUserId]){ setCurrentUser(store.currentUserId); } else { loginModal.classList.add('on'); }
+  toggleMode();
+
+  /* =====================
+     Lightweight runtime tests (non-intrusive)
+     ===================== */
+  (function devTests(){
+    try{
+      console.assert(USERNAME_PATTERN.test('user_01'), 'USERNAME_PATTERN should accept safe ids');
+      console.assert(!USERNAME_PATTERN.test('あ'), 'USERNAME_PATTERN should reject non-ascii');
+      (async()=>{ const h = await sha256Hex('test'); console.assert(h.length===64, 'sha256 length 64'); })();
+      console.assert(escapeHtml('<>&"\'"') === '&lt;&gt;&amp;&quot;&#39;', 'escapeHtml works');
+      console.assert(/^\d{4}-\d{2}-\d{2}$/.test(today()), 'today format');
+    }catch(err){ console.warn('devTests warning:', err); }
+  })();
+
+})();
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(console.error);
+    });
+  }
+</script></body>
+</html>
