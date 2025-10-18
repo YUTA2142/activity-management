@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>行動管理（ブラウザだけ）</title>
+<title>Activity-management</title>
 <style>
   :root{
     --bg:#111315; --panel:#1a1d20; --muted:#2a2e33; --muted-2:#3a3f45;
@@ -16,19 +16,19 @@
   body{margin:0; background:linear-gradient(180deg,var(--bg),#0e0f10 30%, var(--bg) 100%);
     color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", Helvetica, Arial, "Noto Sans JP", "Apple Color Emoji","Segoe UI Emoji"; 
     display:flex; flex-direction:column; min-height:100dvh;}
-  header, footer{position:sticky; z-index:5}
-  header{top:0; background:rgba(17,19,21,.75); backdrop-filter:saturate(120%) blur(8px); border-bottom:1px solid var(--muted); box-shadow:var(--shadow)}
-  footer{bottom:0; background:rgba(17,19,21,.85); backdrop-filter: blur(8px); border-top:1px solid var(--muted)}
+  header{position:sticky; z-index:5; top:0; background:rgba(17,19,21,.75); backdrop-filter:saturate(120%) blur(8px); border-bottom:1px solid var(--muted); box-shadow:var(--shadow)}
   .wrap{max-width:980px; margin-inline:auto; padding:14px 16px}
   .brand{display:flex; align-items:center; gap:12px}
   .brand .logo{width:36px;height:36px; border-radius:10px; background:linear-gradient(135deg,var(--muted-2),var(--muted)); display:grid; place-items:center; box-shadow:inset 0 0 0 1px #000, 0 6px 18px rgba(0,0,0,.35)}
   h1{font-size:1.15rem; margin:0; letter-spacing:.02em}
-  .points{margin-left:auto; display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:999px; background:linear-gradient(180deg,var(--muted),var(--muted-2)); border:1px solid #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); font-weight:600}
+  .header-actions{margin-left:auto; display:flex; align-items:center; gap:12px}
+  .points{display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:999px; background:linear-gradient(180deg,var(--muted),var(--muted-2)); border:1px solid #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); font-weight:600}
   .points small{color:var(--text-2); font-weight:500}
-  .userpill{margin-left:12px; display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background:linear-gradient(180deg,#2d3238,#24282d); border:1px solid #000}
-  .userpill .avatar{width:20px;height:20px; border-radius:6px; background:linear-gradient(180deg,#3b4149,#2a2f36)}
-  .userpill button{all:unset; cursor:pointer; color:var(--text-2)}
-  .userpill .sep{width:1px; height:18px; background:#000; opacity:.4; margin:0 6px}
+  .settings-btn{width:40px; height:40px; border-radius:12px; border:1px solid #000; background:linear-gradient(180deg,#2d3238,#24282d); display:grid; place-items:center; color:var(--text-2); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+  .settings-btn:hover{filter:brightness(1.08)}
+  .settings-btn:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  .settings-btn svg{width:20px; height:20px; stroke:var(--text-2); fill:none}
+  .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
   main{flex:1;}
   .grid{display:grid; gap:16px; grid-template-columns:1fr}
   @media(min-width:980px){ .grid{grid-template-columns: 1fr 1.2fr} }
@@ -63,10 +63,10 @@
   .item .controls{display:flex; gap:8px; flex-wrap:wrap}
   .btn.icon{display:inline-flex; align-items:center; gap:6px}
   .empty{padding:24px; text-align:center; color:var(--text-2)}
-  .footbar{display:flex; gap:8px; justify-content:space-between; align-items:center}
   .seg{display:flex; gap:8px}
   .seg .btn{padding:8px 12px}
   .seg .btn[aria-pressed="true"]{outline:2px solid var(--brand)}
+  .list-filters{margin-bottom:12px; flex-wrap:wrap}
   .fade-in{animation:fade .25s ease-out}
   @keyframes fade {from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:translateY(0)} }
   .modal{position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); backdrop-filter: blur(4px)}
@@ -75,11 +75,10 @@
   .modal h3{margin:0 0 10px; font-size:1.05rem}
   .muted2{color:var(--text-2); font-size:.9rem}
   .inline{display:flex; align-items:center; gap:8px}
-
-  /* ===== Header controls (text labels) ===== */
-  #settingsBtn::before{content:none}
-  #settingsBtn, #logoutBtn{font-size:1rem}
-  .userpill .sep{display:inline-block}
+  .account-summary{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; margin:6px 0 16px; border-radius:12px; background:linear-gradient(180deg,#1d2024,#14171a); border:1px solid #0a0b0c}
+  .account-summary .label{color:var(--text-2); font-size:.9rem}
+  .account-summary strong{font-size:1.05rem}
+  button.btn:disabled{opacity:.5; cursor:not-allowed; filter:grayscale(.2)}
 
   /* ===== Mobile header layout (clean) ===== */
   @media (max-width: 520px){
@@ -88,11 +87,12 @@
     .brand{display:flex; align-items:center; gap:10px; flex-wrap:nowrap}
     .brand .logo{width:28px; height:28px; border-radius:8px}
     h1{font-size:1rem; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-    /* Order: logo, title, userpill, points (points pushes right) */
-    .userpill{margin-left:0; padding:6px 8px; gap:8px}
-    #currentUser{display:inline}
-    .points{margin-left:auto; padding:6px 10px; gap:8px; font-size:.95rem; line-height:1}
+    .header-actions{gap:8px}
+    .points{padding:6px 10px; gap:8px; font-size:.95rem; line-height:1}
     .points #breakdown{display:none}
+    .settings-btn{width:32px; height:32px; border-radius:10px}
+    .account-summary{flex-direction:column; align-items:flex-start}
+    .account-summary button{align-self:stretch; width:100%}
   }
   @media (max-width: 380px){
     h1{font-size:.95rem}
@@ -106,16 +106,17 @@
 <div aria-hidden="true" class="logo">
 <svg fill="none" height="20" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><rect height="18" rx="4" stroke="#9aa3b1" width="18" x="3" y="3"></rect><path d="M7 14.5L10 11l3 3 4-6" stroke="#9aa3b1" stroke-width="1.5"></path></svg>
 </div>
-<h1>行動管理</h1>
-<div class="userpill" id="userPill">
-<div aria-hidden="true" class="avatar"></div>
-<span id="currentUser">未ログイン</span>
-<span aria-hidden="true" class="sep"></span>
-<button id="settingsBtn">設定</button>
-<span aria-hidden="true" class="sep"></span>
-<button id="logoutBtn">ログアウト</button>
-</div>
+<h1>Activity-management</h1>
+<span aria-live="polite" class="sr-only" id="currentUser">未ログイン</span>
+<div class="header-actions">
 <div class="points" id="totalPoints"><small class="label">合計</small><span class="total">0</span> pt<small id="breakdown" style="display:none"></small></div>
+<button aria-controls="acctModal" aria-label="設定" class="settings-btn" id="settingsBtn" type="button">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke-width="1.6"></path>
+<path d="m19.4 12.9a7.2 7.2 0 0 0 0-1.8l2.1-1.6-2-3.5-2.5 1a7.3 7.3 0 0 0-1.5-.9l-.4-2.7h-4l-.4 2.7a7.3 7.3 0 0 0-1.5.9l-2.5-1-2 3.5 2.1 1.6a7.2 7.2 0 0 0 0 1.8l-2.1 1.6 2 3.5 2.5-1a7.3 7.3 0 0 0 1.5.9l.4 2.7h4l.4-2.7a7.3 7.3 0 0 0 1.5-.9l2.5 1 2-3.5-2.1-1.6Z" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</div>
 </div>
 </header>
 <main>
@@ -141,7 +142,7 @@
 <p class="hint">「条件」は自由記入。「日程」は日付と時間を指定。</p>
 </div>
 <div>
-<label for="difficulty">ないど（1〜10）</label>
+<label for="difficulty">難易度（1〜10）</label>
 <input id="difficulty" max="10" min="1" name="difficulty" oninput="document.getElementById('diffOut').textContent=this.value" type="range" value="5"/>
 <div class="hint">現在：<strong id="diffOut">5</strong> pt</div>
 </div>
@@ -219,6 +220,11 @@
 <section aria-labelledby="listTitle" class="card fade-in">
 <div class="body">
 <h2 id="listTitle">行動リスト</h2>
+<div aria-label="表示切り替え" class="seg list-filters" id="listFilters" role="group">
+<button aria-pressed="true" class="btn" data-filter="all" type="button">すべて</button>
+<button aria-pressed="false" class="btn" data-filter="cond" type="button">条件</button>
+<button aria-pressed="false" class="btn" data-filter="sched" type="button">日程</button>
+</div>
 <div class="list" id="list"></div>
 <div class="empty" id="empty">まだ項目がありません。上のフォームから追加してください。</div>
 </div>
@@ -233,19 +239,6 @@
 </section>
 </div>
 </main>
-<footer>
-<div class="wrap footbar">
-<div aria-label="フィルター" class="seg" role="tablist">
-<button aria-pressed="true" class="btn" data-filter="all">すべて</button>
-<button aria-pressed="false" class="btn" data-filter="active">未達成</button>
-<button aria-pressed="false" class="btn" data-filter="upcoming">予定あり</button>
-<button aria-pressed="false" class="btn" data-filter="done">達成</button>
-</div>
-<div class="seg">
-<button class="btn err" id="clearBtn">全削除</button>
-</div>
-</div>
-</footer>
 <!-- Login Modal -->
 <div aria-labelledby="loginTitle" aria-modal="true" class="modal on" id="loginModal" role="dialog">
 <div class="panel">
@@ -273,28 +266,36 @@
 <!-- Account Settings Modal -->
 <div aria-labelledby="acctTitle" aria-modal="true" class="modal" id="acctModal" role="dialog">
 <div class="panel">
-<h3 id="acctTitle">アカウント設定（パスワードの設定/変更）</h3>
+<h3 id="acctTitle">アカウント設定</h3>
+<div class="account-summary">
+<div>
+<div class="label">ログイン中</div>
+<strong id="accountName">未ログイン</strong>
+</div>
+<button class="btn err" id="logoutBtn" type="button">ログアウト</button>
+</div>
+<p class="muted2" id="acctStatus">ログインすると設定を変更できます。</p>
 <form class="row" id="acctForm">
 <div>
 <label for="currPw">現在のパスワード</label>
 <div class="inline">
-<input id="currPw" name="currPw" placeholder="未設定の方は空欄" type="password">
-<label class="inline" style="font-size:.85rem"><input id="showPw2" type="checkbox"/> 表示</label>
-</input></div>
+  <input id="currPw" name="currPw" placeholder="未設定の方は空欄" type="password"/>
+  <label class="inline" style="font-size:.85rem"><input id="showPw2" type="checkbox"/> 表示</label>
+</div>
 </div>
 <div>
 <label for="newPw">新しいパスワード</label>
 <div class="inline">
-<input id="newPw" name="newPw" placeholder="6文字以上推奨" type="password">
-<label class="inline" style="font-size:.85rem"><input id="showPw3" type="checkbox"/> 表示</label>
-</input></div>
+  <input id="newPw" name="newPw" placeholder="6文字以上推奨" type="password"/>
+  <label class="inline" style="font-size:.85rem"><input id="showPw3" type="checkbox"/> 表示</label>
+</div>
 </div>
 <div>
 <label for="newPw2">新しいパスワード（確認）</label>
-<input id="newPw2" name="newPw2" placeholder="もう一度入力" type="password">
-</input></div>
+  <input id="newPw2" name="newPw2" placeholder="もう一度入力" type="password"/>
+</div>
 <div class="actions">
-<button class="btn primary" type="submit">保存</button>
+<button class="btn primary" id="acctSave" type="submit">保存</button>
 <button class="btn" id="acctClose" type="button">閉じる</button>
 </div>
 </form>
@@ -312,15 +313,18 @@
   const modeEl = $('#mode');
   const condRow = $('#condRow');
   const schedRow = $('#schedRow');
-  const filterButtons = $$('.seg [data-filter]');
+  const filterButtons = $$('#listFilters [data-filter]');
   const loginModal = $('#loginModal');
   const loginForm = $('#loginForm');
-  const currentUserEl = $('#currentUser');
-  const logoutBtn = $('#logoutBtn');
   const settingsBtn = $('#settingsBtn');
+  const currentUserEl = $('#currentUser');
   const acctModal = $('#acctModal');
   const acctForm = $('#acctForm');
   const acctClose = $('#acctClose');
+  const logoutBtn = $('#logoutBtn');
+  const accountNameEl = $('#accountName');
+  const acctStatus = $('#acctStatus');
+  const acctSave = $('#acctSave');
   const spendForm = $('#spendForm');
   const spendLogWrap = $('#spendLogWrap');
   const spendWarn = $('#spendWarn');
@@ -342,6 +346,43 @@
   // store = { currentUserId: string|null, users: { [id]: { passwordHash: string|null, items: [], spent:number, spendLog:[{id,what,amt,at}], earned:number } } }
   let store = { currentUserId:null, users:{} };
   let items = [];
+
+  function updateAccountModalState(){
+    const loggedIn = Boolean(store.currentUserId);
+    if(accountNameEl) accountNameEl.textContent = loggedIn ? store.currentUserId : '未ログイン';
+    if(currentUserEl) currentUserEl.textContent = loggedIn ? store.currentUserId : '未ログイン';
+    if(acctStatus) acctStatus.textContent = loggedIn ? 'パスワードの設定/変更ができます。' : 'ログインすると設定を変更できます。';
+    if(logoutBtn) logoutBtn.disabled = !loggedIn;
+    if(acctForm){
+      acctForm.querySelectorAll('input').forEach(input => {
+        input.disabled = !loggedIn;
+      });
+    }
+    if(acctSave) acctSave.disabled = !loggedIn;
+  }
+
+  function normalizeItem(item){
+    if(!item || typeof item !== 'object') return null;
+    const diff = Number(item.difficulty);
+    if(Number.isFinite(diff)){
+      const clamped = Math.min(10, Math.max(1, Math.round(diff)));
+      item.difficulty = clamped;
+    } else {
+      item.difficulty = 1;
+    }
+    const rawCount = Number(item.completedCount);
+    if(Number.isFinite(rawCount) && rawCount > 0){
+      item.completedCount = Math.floor(rawCount);
+    } else {
+      item.completedCount = item.done ? 1 : 0;
+    }
+    if(item.completedCount < 0) item.completedCount = 0;
+    item.done = item.completedCount > 0;
+    if(item.completedCount === 0){
+      delete item.doneAt;
+    }
+    return item;
+  }
 
   const USERNAME_PATTERN = /^[a-z0-9._-]{3,}$/;
   const normalizeId = (id)=> String(id).trim().toLowerCase();
@@ -414,12 +455,32 @@
     }
   });
 
-  settingsBtn.addEventListener('click', ()=>{
-    if(!store.currentUserId){ alert('まずログインしてください'); return; }
-    $('#currPw').value=''; $('#newPw').value=''; $('#newPw2').value='';
+  function openSettings(){
+    const curr = $('#currPw'); const npw = $('#newPw'); const npw2 = $('#newPw2');
+    if(curr) curr.value=''; if(npw) npw.value=''; if(npw2) npw2.value='';
+    if(acctForm){
+      acctForm.querySelectorAll('input[type="checkbox"]').forEach(chk=> chk.checked=false);
+    }
+    updateAccountModalState();
     acctModal.classList.add('on');
-  });
-  acctClose.addEventListener('click', ()=> acctModal.classList.remove('on'));
+    if(settingsBtn) settingsBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeSettings(){
+    const wasOpen = acctModal.classList.contains('on');
+    acctModal.classList.remove('on');
+    if(settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
+    if(wasOpen && settingsBtn){
+      settingsBtn.focus();
+    }
+  }
+
+  if(settingsBtn){
+    settingsBtn.setAttribute('aria-haspopup', 'dialog');
+    settingsBtn.setAttribute('aria-expanded', 'false');
+    settingsBtn.addEventListener('click', openSettings);
+  }
+  acctClose.addEventListener('click', closeSettings);
   if (document.getElementById('showPw1')) { document.getElementById('showPw1').addEventListener('change', (e)=>{ document.getElementById('password').type = e.target.checked ? 'text':'password'; }); }
   if (document.getElementById('showPw2')) { document.getElementById('showPw2').addEventListener('change', (e)=>{ document.getElementById('currPw').type = e.target.checked ? 'text':'password'; }); }
   if (document.getElementById('showPw3')) { document.getElementById('showPw3').addEventListener('change', (e)=>{ document.getElementById('newPw').type = e.target.checked ? 'text':'password'; }); }
@@ -438,32 +499,57 @@
       if(!curr){ alert('現在のパスワードを入力してください'); return; }
       const h = await sha256Hex(curr); if(h !== meta.passwordHash){ alert('現在のパスワードが違います'); return; }
     }
-    meta.passwordHash = await sha256Hex(n1); store.users[uid] = meta; saveStore(); alert('パスワードを保存しました'); acctModal.classList.remove('on');
+    meta.passwordHash = await sha256Hex(n1); store.users[uid] = meta; saveStore(); alert('パスワードを保存しました'); closeSettings();
   });
 
   logoutBtn.addEventListener('click', ()=>{
-    store.currentUserId = null; saveStore(); currentUserEl.textContent = '未ログイン'; items = []; render(); loginModal.classList.add('on');
+    if(logoutBtn.disabled) return;
+    store.currentUserId = null; saveStore(); items = []; render(); closeSettings(); loginModal.classList.add('on');
+    updateAccountModalState();
+  });
+
+  acctModal.addEventListener('click', (e)=>{
+    if(e.target === acctModal){
+      closeSettings();
+    }
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && acctModal.classList.contains('on')){
+      closeSettings();
+    }
   });
 
   // Persistence helpers
   function ensureUserMeta(){
     const uid = store.currentUserId; if(!uid) return null;
     store.users[uid] = store.users[uid] || { passwordHash:null, items:[], spent:0, spendLog:[], earned:0 };
-    if(typeof store.users[uid].spent !== 'number') store.users[uid].spent = 0;
-    if(!Array.isArray(store.users[uid].spendLog)) store.users[uid].spendLog = [];
-    if(typeof store.users[uid].earned !== 'number') store.users[uid].earned = 0;
-    if(!Array.isArray(store.users[uid].rewards)) store.users[uid].rewards = [];
-    return store.users[uid];
+    const meta = store.users[uid];
+    if(!Array.isArray(meta.items)) meta.items = [];
+    for(let i=0; i<meta.items.length; i++){
+      if(!normalizeItem(meta.items[i])){ meta.items.splice(i,1); i--; }
+    }
+    if(typeof meta.spent !== 'number') meta.spent = 0;
+    if(!Array.isArray(meta.spendLog)) meta.spendLog = [];
+    if(typeof meta.earned !== 'number') meta.earned = 0;
+    if(!Array.isArray(meta.rewards)) meta.rewards = [];
+    return meta;
   }
   function save(){
     const meta = ensureUserMeta(); if(!meta) return;
-    meta.items = items; saveStore();
+    items.forEach(normalizeItem);
+    meta.items = items;
+    saveStore();
   }
 
   // Points
   function earnedPoints(){
     const meta = ensureUserMeta();
-    const fromList = items.filter(i=>i.done).reduce((a,b)=> a + (Number(b.difficulty)||0), 0);
+    const fromList = items.reduce((total, item)=>{
+      const diff = Number(item.difficulty) || 0;
+      const count = Math.max(0, Number(item.completedCount) || 0);
+      return total + diff * count;
+    }, 0);
     const acc = meta? (meta.earned||0) : 0;
     return fromList + acc;
   }
@@ -485,9 +571,8 @@
       const getTs = (x)=> x.mode==='sched' && x.date ? new Date(x.date + (x.time? 'T'+x.time : 'T00:00')).getTime() : x.createdAt;
       return getTs(a) - getTs(b);
     }).filter(i=>{
-      if(filter==='active') return !i.done;
-      if(filter==='done') return i.done;
-      if(filter==='upcoming') return i.mode==='sched' && !!i.date && !i.done;
+      if(filter==='cond') return i.mode==='cond';
+      if(filter==='sched') return i.mode==='sched';
       return true;
     });
     visible.forEach(item=> listEl.appendChild(renderItem(item)) );
@@ -499,23 +584,29 @@
     renderRewards();
     renderSpendLog();
     renderSpendList();
+    updateAccountModalState();
   }
 
   function renderItem(item){
     const el = document.createElement('article');
     el.className = 'item fade-in';
     const dd = item.mode==='sched' && item.date ? formatDateTime(item.date, item.time) : null;
+    const count = Math.max(0, Number(item.completedCount) || 0);
+    const completionNote = count>0 ? `<div class="hint" style="margin:0 0 8px">累計達成：${count}回</div>` : '';
+    const undoButton = count>0 ? `<button class="btn ok icon" data-act="undo" data-id="${item.id}">✅ 1回戻す (-${item.difficulty}pt)</button>` : '';
     el.innerHTML = `
       <div class="item-head">
         <span class="badge">${item.mode==='sched' ? '日程' : '条件'}</span>
         <div class="title">${escapeHtml(item.title)}</div>
         <div class="spacer"></div>
-        <div class="badge" title="ないど">${item.difficulty} pt</div>
+        <div class="badge" title="難易度">${item.difficulty} pt</div>
       </div>
       <div class="muted" style="margin:6px 0 10px">${ item.mode==='sched' ? (dd? `<span class="date">${dd}</span>`:'<span class="date">日程未設定</span>') : (item.condition? escapeHtml(item.condition) : '条件未設定') }</div>
+      ${completionNote}
       <div class="bar" aria-hidden="true"><i style="width:${(item.difficulty/10)*100}%"></i></div>
       <div class="actions controls" style="margin-top:10px">
-        ${ item.done ? `<button class="btn ok icon" data-act="undo" data-id="${item.id}">✅ 元に戻す</button>` : `<button class="btn ok icon" data-act="done" data-id="${item.id}">✔ 達成</button>`}
+        <button class="btn ok icon" data-act="done" data-id="${item.id}">✔ 達成 (+${item.difficulty}pt)</button>
+        ${undoButton}
         <button class="btn icon" data-act="edit" data-id="${item.id}">✎ 編集</button>
         <button class="btn err icon" data-act="del" data-id="${item.id}">🗑 削除</button>
       </div>`;
@@ -527,17 +618,31 @@
     const btn = e.target.closest('[data-act]'); if(!btn) return;
     e.preventDefault();
     const id = btn.dataset.id; const act = btn.dataset.act;
-    const idx = items.findIndex(x=>x.id===id); if(idx<0 && act!=='done' && act!=='edit') return;
+    const idx = items.findIndex(x=>x.id===id); if(idx<0) return;
     const it = items[idx];
     if(act==='done'){
       if(!it) return;
-      if(it.done) { return; }
-      // 達成してもリストから削除しない（完了状態で残す）
+      normalizeItem(it);
+      const current = Math.max(0, Number(it.completedCount) || 0);
+      it.completedCount = current + 1;
       it.done = true;
       it.doneAt = Date.now();
       save(); render();
+      return;
     }
-    if(act==='undo'){ if(!it) return; it.done = false; delete it.doneAt; save(); render(); }
+    if(act==='undo'){
+      if(!it) return;
+      normalizeItem(it);
+      const current = Math.max(0, Number(it.completedCount) || 0);
+      if(current <= 0) return;
+      it.completedCount = current - 1;
+      if(it.completedCount <= 0){
+        it.done = false;
+        delete it.doneAt;
+      }
+      save(); render();
+      return;
+    }
     if(act==='del'){
       if(confirm('削除しますか？')){ items.splice(idx,1); save(); render(); }
     }
@@ -623,19 +728,22 @@
     if(mode==='cond'){ condition = String(data.get('condition')||'').trim(); }
     else{ date = String(data.get('date')||''); time = String(data.get('time')||''); }
     const editingId = form.dataset.editing;
-    if(editingId){ const i = items.findIndex(x=>x.id===editingId); if(i>=0){ items[i] = {...items[i], title, mode, condition, date, time, difficulty}; } delete form.dataset.editing; }
-    else{ items.push({id:uid(), title, mode, condition, date, time, difficulty, done:false, createdAt:Date.now()}); }
+    if(editingId){
+      const i = items.findIndex(x=>x.id===editingId);
+      if(i>=0){
+        Object.assign(items[i], { title, mode, condition, date, time, difficulty });
+        normalizeItem(items[i]);
+      }
+      delete form.dataset.editing;
+    }
+    else{
+      const newItem = {id:uid(), title, mode, condition, date, time, difficulty, completedCount:0, done:false, createdAt:Date.now()};
+      normalizeItem(newItem);
+      items.push(newItem);
+    }
     save(); render(); form.reset(); toggleMode(); $('#diffOut').textContent = $('#difficulty').value;
   });
   $('#resetBtn').addEventListener('click', ()=>{ delete form.dataset.editing; toggleMode(); $('#diffOut').textContent = $('#difficulty').value; });
-
-  // 全削除（参照維持のため length=0 に）
-  $('#clearBtn').addEventListener('click', ()=>{
-    if(!items.length){ alert('削除する項目がありません'); return; }
-    if(confirm('すべての行動を削除しますか？この操作は元に戻せません。')){
-      items.length = 0; save(); render();
-    }
-  });
 
   // フィルター
   filterButtons.forEach(btn=> btn.addEventListener('click', ()=>{ filter = btn.dataset.filter; render(); }));
@@ -682,9 +790,14 @@
 
   function setCurrentUser(id){
     store.currentUserId = id; saveStore();
-    const meta = ensureUserMeta(); items = meta.items || []; render(); currentUserEl.textContent = id; loginModal.classList.remove('on');
+    const meta = ensureUserMeta();
+    items = meta.items || [];
+    items.forEach(normalizeItem);
+    render(); loginModal.classList.remove('on');
+    updateAccountModalState();
   }
 
+  updateAccountModalState();
   loadStore();
   if(store.currentUserId && store.users[store.currentUserId]){ setCurrentUser(store.currentUserId); } else { loginModal.classList.add('on'); }
   toggleMode();
@@ -710,5 +823,6 @@
       navigator.serviceWorker.register('/sw.js').catch(console.error);
     });
   }
-</script></body>
+</script>
+</body>
 </html>

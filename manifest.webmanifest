@@ -1,6 +1,6 @@
 {
-  "name": "行動管理（ブラウザだけ）",
-  "short_name": "行動管理",
+  "name": "Activity-management",
+  "short_name": "Activity-management",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
