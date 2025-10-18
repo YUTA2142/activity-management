@@ -264,7 +264,10 @@
 <h3 id="acctTitle">アカウント設定</h3>
 <p class="muted2">ログイン中：<strong id="accountName">未ログイン</strong></p>
 <div class="actions" style="justify-content:flex-end; margin:12px 0 4px">
-<button class="btn err" id="logoutBtn" type="button">ログアウト</button>
+  <button class="btn err" id="logoutBtn" type="button">ログアウト</button>
+</div>
+<div class="actions" style="justify-content:flex-end; margin:0 0 18px">
+  <button class="btn warn" id="clearPointsBtn" type="button">所持ポイントを全消し</button>
 </div>
 <form class="row" id="acctForm">
 <div>
@@ -291,6 +294,17 @@
 </div>
 </form>
 </div>
+</div>
+<div aria-labelledby="clearPointsTitle" aria-modal="true" class="modal" id="clearPointsModal" role="dialog">
+  <div class="panel">
+    <h3 id="clearPointsTitle">所持ポイントのリセット</h3>
+    <p class="muted2">現在の所持ポイント：<strong id="clearPointsBalance">0</strong> pt</p>
+    <p class="muted2">この操作は取り消せません。本当に全て削除しますか？</p>
+    <div class="actions" style="justify-content:flex-end; margin-top:18px">
+      <button class="btn" id="clearPointsCancel" type="button">キャンセル</button>
+      <button class="btn err" id="clearPointsConfirm" type="button">全て削除</button>
+    </div>
+  </div>
 </div>
 <script>
 (function(){
@@ -323,6 +337,11 @@
   const rewardsListEl = $('#rewardsList');
   const rewardsEmptyEl = $('#rewardsEmpty');
   const rewardSelect = $('#rewardSelect');
+  const clearPointsBtn = $('#clearPointsBtn');
+  const clearPointsModal = $('#clearPointsModal');
+  const clearPointsBalanceEl = $('#clearPointsBalance');
+  const clearPointsCancel = $('#clearPointsCancel');
+  const clearPointsConfirm = $('#clearPointsConfirm');
   let filter = 'all';
 
   // 表示・保存の上限（必要に応じて調整可）
@@ -550,6 +569,27 @@
     acctModal.classList.add('on');
   });
   acctClose.addEventListener('click', ()=> acctModal.classList.remove('on'));
+  if(clearPointsBtn){
+    clearPointsBtn.addEventListener('click', ()=>{
+      if(!store.currentUserId){ alert('まずログインしてください'); return; }
+      if(clearPointsBalanceEl) clearPointsBalanceEl.textContent = String(balance());
+      if(clearPointsModal) clearPointsModal.classList.add('on');
+    });
+  }
+  if(clearPointsCancel){
+    clearPointsCancel.addEventListener('click', ()=>{ if(clearPointsModal) clearPointsModal.classList.remove('on'); });
+  }
+  if(clearPointsModal){
+    clearPointsModal.addEventListener('click', (e)=>{ if(e.target === clearPointsModal) clearPointsModal.classList.remove('on'); });
+  }
+  if(clearPointsConfirm){
+    clearPointsConfirm.addEventListener('click', ()=>{
+      if(!store.currentUserId){ alert('まずログインしてください'); return; }
+      resetAllPoints();
+      if(clearPointsModal) clearPointsModal.classList.remove('on');
+      alert('所持ポイントをリセットしました');
+    });
+  }
   if (document.getElementById('showPw1')) { document.getElementById('showPw1').addEventListener('change', (e)=>{ document.getElementById('password').type = e.target.checked ? 'text':'password'; }); }
   if (document.getElementById('showPw2')) { document.getElementById('showPw2').addEventListener('change', (e)=>{ document.getElementById('currPw').type = e.target.checked ? 'text':'password'; }); }
   if (document.getElementById('showPw3')) { document.getElementById('showPw3').addEventListener('change', (e)=>{ document.getElementById('newPw').type = e.target.checked ? 'text':'password'; }); }
@@ -616,6 +656,20 @@
   }
   function spentPoints(){ const meta = ensureUserMeta(); return meta? (meta.spent||0) : 0; }
   function balance(){ return Math.max(0, earnedPoints() - spentPoints()); }
+
+  function resetAllPoints(){
+    const meta = ensureUserMeta(); if(!meta) return;
+    items.forEach(item=>{
+      item.completedCount = 0;
+      item.done = false;
+      delete item.doneAt;
+    });
+    meta.earned = 0;
+    meta.spent = 0;
+    meta.spendLog = [];
+    save();
+    render();
+  }
 
   function renderSpendLog(){
     const meta = ensureUserMeta(); if(!meta) return;
