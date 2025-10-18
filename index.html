@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>行動管理（ブラウザだけ）</title>
+<title>Activity-management</title>
 <style>
   :root{
     --bg:#111315; --panel:#1a1d20; --muted:#2a2e33; --muted-2:#3a3f45;
@@ -106,7 +106,7 @@
 <div aria-hidden="true" class="logo">
 <svg fill="none" height="20" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><rect height="18" rx="4" stroke="#9aa3b1" width="18" x="3" y="3"></rect><path d="M7 14.5L10 11l3 3 4-6" stroke="#9aa3b1" stroke-width="1.5"></path></svg>
 </div>
-<h1>行動管理</h1>
+<h1>Activity-management</h1>
 <div class="userpill" id="userPill">
 <div aria-hidden="true" class="avatar"></div>
 <span id="currentUser">未ログイン</span>
@@ -141,7 +141,7 @@
 <p class="hint">「条件」は自由記入。「日程」は日付と時間を指定。</p>
 </div>
 <div>
-<label for="difficulty">ないど（1〜10）</label>
+<label for="difficulty">難易度（1〜10）</label>
 <input id="difficulty" max="10" min="1" name="difficulty" oninput="document.getElementById('diffOut').textContent=this.value" type="range" value="5"/>
 <div class="hint">現在：<strong id="diffOut">5</strong> pt</div>
 </div>
@@ -343,6 +343,29 @@
   let store = { currentUserId:null, users:{} };
   let items = [];
 
+  function normalizeItem(item){
+    if(!item || typeof item !== 'object') return null;
+    const diff = Number(item.difficulty);
+    if(Number.isFinite(diff)){
+      const clamped = Math.min(10, Math.max(1, Math.round(diff)));
+      item.difficulty = clamped;
+    } else {
+      item.difficulty = 1;
+    }
+    const rawCount = Number(item.completedCount);
+    if(Number.isFinite(rawCount) && rawCount > 0){
+      item.completedCount = Math.floor(rawCount);
+    } else {
+      item.completedCount = item.done ? 1 : 0;
+    }
+    if(item.completedCount < 0) item.completedCount = 0;
+    item.done = item.completedCount > 0;
+    if(item.completedCount === 0){
+      delete item.doneAt;
+    }
+    return item;
+  }
+
   const USERNAME_PATTERN = /^[a-z0-9._-]{3,}$/;
   const normalizeId = (id)=> String(id).trim().toLowerCase();
   const findIdCaseInsensitive = (id)=>{
@@ -449,21 +472,32 @@
   function ensureUserMeta(){
     const uid = store.currentUserId; if(!uid) return null;
     store.users[uid] = store.users[uid] || { passwordHash:null, items:[], spent:0, spendLog:[], earned:0 };
-    if(typeof store.users[uid].spent !== 'number') store.users[uid].spent = 0;
-    if(!Array.isArray(store.users[uid].spendLog)) store.users[uid].spendLog = [];
-    if(typeof store.users[uid].earned !== 'number') store.users[uid].earned = 0;
-    if(!Array.isArray(store.users[uid].rewards)) store.users[uid].rewards = [];
-    return store.users[uid];
+    const meta = store.users[uid];
+    if(!Array.isArray(meta.items)) meta.items = [];
+    for(let i=0; i<meta.items.length; i++){
+      if(!normalizeItem(meta.items[i])){ meta.items.splice(i,1); i--; }
+    }
+    if(typeof meta.spent !== 'number') meta.spent = 0;
+    if(!Array.isArray(meta.spendLog)) meta.spendLog = [];
+    if(typeof meta.earned !== 'number') meta.earned = 0;
+    if(!Array.isArray(meta.rewards)) meta.rewards = [];
+    return meta;
   }
   function save(){
     const meta = ensureUserMeta(); if(!meta) return;
-    meta.items = items; saveStore();
+    items.forEach(normalizeItem);
+    meta.items = items;
+    saveStore();
   }
 
   // Points
   function earnedPoints(){
     const meta = ensureUserMeta();
-    const fromList = items.filter(i=>i.done).reduce((a,b)=> a + (Number(b.difficulty)||0), 0);
+    const fromList = items.reduce((total, item)=>{
+      const diff = Number(item.difficulty) || 0;
+      const count = Math.max(0, Number(item.completedCount) || 0);
+      return total + diff * count;
+    }, 0);
     const acc = meta? (meta.earned||0) : 0;
     return fromList + acc;
   }
@@ -505,17 +539,22 @@
     const el = document.createElement('article');
     el.className = 'item fade-in';
     const dd = item.mode==='sched' && item.date ? formatDateTime(item.date, item.time) : null;
+    const count = Math.max(0, Number(item.completedCount) || 0);
+    const completionNote = count>0 ? `<div class="hint" style="margin:0 0 8px">累計達成：${count}回</div>` : '';
+    const undoButton = count>0 ? `<button class="btn ok icon" data-act="undo" data-id="${item.id}">✅ 1回戻す (-${item.difficulty}pt)</button>` : '';
     el.innerHTML = `
       <div class="item-head">
         <span class="badge">${item.mode==='sched' ? '日程' : '条件'}</span>
         <div class="title">${escapeHtml(item.title)}</div>
         <div class="spacer"></div>
-        <div class="badge" title="ないど">${item.difficulty} pt</div>
+        <div class="badge" title="難易度">${item.difficulty} pt</div>
       </div>
       <div class="muted" style="margin:6px 0 10px">${ item.mode==='sched' ? (dd? `<span class="date">${dd}</span>`:'<span class="date">日程未設定</span>') : (item.condition? escapeHtml(item.condition) : '条件未設定') }</div>
+      ${completionNote}
       <div class="bar" aria-hidden="true"><i style="width:${(item.difficulty/10)*100}%"></i></div>
       <div class="actions controls" style="margin-top:10px">
-        ${ item.done ? `<button class="btn ok icon" data-act="undo" data-id="${item.id}">✅ 元に戻す</button>` : `<button class="btn ok icon" data-act="done" data-id="${item.id}">✔ 達成</button>`}
+        <button class="btn ok icon" data-act="done" data-id="${item.id}">✔ 達成 (+${item.difficulty}pt)</button>
+        ${undoButton}
         <button class="btn icon" data-act="edit" data-id="${item.id}">✎ 編集</button>
         <button class="btn err icon" data-act="del" data-id="${item.id}">🗑 削除</button>
       </div>`;
@@ -527,17 +566,31 @@
     const btn = e.target.closest('[data-act]'); if(!btn) return;
     e.preventDefault();
     const id = btn.dataset.id; const act = btn.dataset.act;
-    const idx = items.findIndex(x=>x.id===id); if(idx<0 && act!=='done' && act!=='edit') return;
+    const idx = items.findIndex(x=>x.id===id); if(idx<0) return;
     const it = items[idx];
     if(act==='done'){
       if(!it) return;
-      if(it.done) { return; }
-      // 達成してもリストから削除しない（完了状態で残す）
+      normalizeItem(it);
+      const current = Math.max(0, Number(it.completedCount) || 0);
+      it.completedCount = current + 1;
       it.done = true;
       it.doneAt = Date.now();
       save(); render();
+      return;
     }
-    if(act==='undo'){ if(!it) return; it.done = false; delete it.doneAt; save(); render(); }
+    if(act==='undo'){
+      if(!it) return;
+      normalizeItem(it);
+      const current = Math.max(0, Number(it.completedCount) || 0);
+      if(current <= 0) return;
+      it.completedCount = current - 1;
+      if(it.completedCount <= 0){
+        it.done = false;
+        delete it.doneAt;
+      }
+      save(); render();
+      return;
+    }
     if(act==='del'){
       if(confirm('削除しますか？')){ items.splice(idx,1); save(); render(); }
     }
@@ -623,8 +676,19 @@
     if(mode==='cond'){ condition = String(data.get('condition')||'').trim(); }
     else{ date = String(data.get('date')||''); time = String(data.get('time')||''); }
     const editingId = form.dataset.editing;
-    if(editingId){ const i = items.findIndex(x=>x.id===editingId); if(i>=0){ items[i] = {...items[i], title, mode, condition, date, time, difficulty}; } delete form.dataset.editing; }
-    else{ items.push({id:uid(), title, mode, condition, date, time, difficulty, done:false, createdAt:Date.now()}); }
+    if(editingId){
+      const i = items.findIndex(x=>x.id===editingId);
+      if(i>=0){
+        Object.assign(items[i], { title, mode, condition, date, time, difficulty });
+        normalizeItem(items[i]);
+      }
+      delete form.dataset.editing;
+    }
+    else{
+      const newItem = {id:uid(), title, mode, condition, date, time, difficulty, completedCount:0, done:false, createdAt:Date.now()};
+      normalizeItem(newItem);
+      items.push(newItem);
+    }
     save(); render(); form.reset(); toggleMode(); $('#diffOut').textContent = $('#difficulty').value;
   });
   $('#resetBtn').addEventListener('click', ()=>{ delete form.dataset.editing; toggleMode(); $('#diffOut').textContent = $('#difficulty').value; });
@@ -682,7 +746,10 @@
 
   function setCurrentUser(id){
     store.currentUserId = id; saveStore();
-    const meta = ensureUserMeta(); items = meta.items || []; render(); currentUserEl.textContent = id; loginModal.classList.remove('on');
+    const meta = ensureUserMeta();
+    items = meta.items || [];
+    items.forEach(normalizeItem);
+    render(); currentUserEl.textContent = id; loginModal.classList.remove('on');
   }
 
   loadStore();
