@@ -107,7 +107,7 @@
 <svg fill="none" height="20" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><rect height="18" rx="4" stroke="#9aa3b1" width="18" x="3" y="3"></rect><path d="M7 14.5L10 11l3 3 4-6" stroke="#9aa3b1" stroke-width="1.5"></path></svg>
 </div>
 <h1>Activity-management</h1>
-<span aria-live="polite" class="sr-only" id="currentUser">未ログイン</span>
+ main
 <div class="points" id="totalPoints"><small class="label">合計</small><span class="total">0</span> pt<small id="breakdown" style="display:none"></small></div>
 <div class="userpill">
 <button aria-controls="acctModal" aria-label="設定" class="settings-btn" id="settingsBtn" type="button">
@@ -220,10 +220,7 @@
 <section aria-labelledby="listTitle" class="card fade-in">
 <div class="body">
 <h2 id="listTitle">行動リスト</h2>
-<div aria-label="表示切り替え" class="seg list-filters" id="listFilters" role="group">
-<button aria-pressed="true" class="btn" data-filter="all" type="button">すべて</button>
-<button aria-pressed="false" class="btn" data-filter="cond" type="button">条件</button>
-<button aria-pressed="false" class="btn" data-filter="sched" type="button">日程</button>
+ main
 </div>
 <div class="list" id="list"></div>
 <div class="empty" id="empty">まだ項目がありません。上のフォームから追加してください。</div>
@@ -347,20 +344,7 @@
   let store = { currentUserId:null, users:{} };
   let items = [];
 
-  function updateAccountModalState(){
-    const loggedIn = Boolean(store.currentUserId);
-    if(accountNameEl) accountNameEl.textContent = loggedIn ? store.currentUserId : '未ログイン';
-    if(currentUserEl) currentUserEl.textContent = loggedIn ? store.currentUserId : '未ログイン';
-    if(acctStatus) acctStatus.textContent = loggedIn ? 'パスワードの設定/変更ができます。' : 'ログインすると設定を変更できます。';
-    if(logoutBtn) logoutBtn.disabled = !loggedIn;
-    if(acctForm){
-      acctForm.querySelectorAll('input').forEach(input => {
-        input.disabled = !loggedIn;
-      });
-    }
-    if(acctSave) acctSave.disabled = !loggedIn;
-  }
-
+ main
   function normalizeItem(item){
     if(!item || typeof item !== 'object') return null;
     const diff = Number(item.difficulty);
@@ -793,8 +777,7 @@
     const meta = ensureUserMeta();
     items = meta.items || [];
     items.forEach(normalizeItem);
-    render(); loginModal.classList.remove('on');
-    updateAccountModalState();
+ main
   }
 
   updateAccountModalState();
