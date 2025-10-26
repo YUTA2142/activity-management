@@ -758,7 +758,21 @@
       return;
     }
     if(act==='del'){
-      if(confirm('削除しますか？')){ items.splice(idx,1); save(); render(); }
+      if(confirm('削除しますか？')){
+        const meta = ensureUserMeta();
+        if(meta && it){
+          const count = Math.max(0, Number(it.completedCount) || 0);
+          const diff = Math.max(0, Number(it.difficulty) || 0);
+          const reclaimed = count * diff;
+          if(reclaimed > 0){
+            const base = Number(meta.earned) || 0;
+            meta.earned = base + reclaimed;
+          }
+        }
+        items.splice(idx,1);
+        save();
+        render();
+      }
     }
     if(act==='edit' && it){
       $('#title').value = it.title; $('#mode').value = it.mode; toggleMode();
