@@ -845,8 +845,19 @@
     if(editingId){
       const i = items.findIndex(x=>x.id===editingId);
       if(i>=0){
-        Object.assign(items[i], { title, mode, condition, date, time, difficulty });
-        normalizeItem(items[i]);
+        const meta = ensureUserMeta();
+        const target = items[i];
+        const prevCount = Math.max(0, Number(target.completedCount) || 0);
+        const prevDiff = Number(target.difficulty) || 0;
+        const prevPoints = prevCount * prevDiff;
+        Object.assign(target, { title, mode, condition, date, time, difficulty });
+        normalizeItem(target);
+        const nextDiff = Number(target.difficulty) || 0;
+        const nextPoints = prevCount * nextDiff;
+        if(meta){
+          const earned = Number(meta.earned) || 0;
+          meta.earned = earned + (prevPoints - nextPoints);
+        }
       }
       delete form.dataset.editing;
     }
